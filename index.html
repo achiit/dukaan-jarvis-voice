@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>J.A.R.V.I.S.</title>
+<style>
+:root{--bg:#eaf3fb;--fg:#0b2a3d;--mut:#4d6b80;--acc:#0a8fd0;--card:#ffffffcc;--bd:#9cc7e3;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#040b14;--fg:#d6f1ff;--mut:#7fa6bd;--acc:#2fd0ff;--card:#0a1a28cc;--bd:#12425c}}
+:root[data-theme="dark"]{--bg:#040b14;--fg:#d6f1ff;--mut:#7fa6bd;--acc:#2fd0ff;--card:#0a1a28cc;--bd:#12425c}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:radial-gradient(circle at 50% 30%,color-mix(in srgb,var(--acc) 18%,var(--bg)),var(--bg) 65%);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;align-items:center}
+header{padding:14px 16px 0;text-align:center;letter-spacing:.35em;font-weight:600;font-size:14px;color:var(--acc)}
+#status{font-size:13px;color:var(--mut);margin-top:6px;letter-spacing:.05em;min-height:18px;text-align:center;padding:0 16px}
+.stage{position:relative;width:min(62vw,250px);aspect-ratio:1;margin:22px 0 10px;flex:none}
+.ring{position:absolute;inset:0;border-radius:50%;border:2px solid var(--acc);opacity:.55}
+.r2{inset:12%;border-style:dashed;animation:spin 14s linear infinite}
+.r3{inset:24%;border-color:var(--acc);opacity:.35;animation:spin 8s linear infinite reverse}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+#orb{position:absolute;inset:34%;border-radius:50%;border:0;cursor:pointer;background:radial-gradient(circle at 35% 30%,#fff,var(--acc) 45%,color-mix(in srgb,var(--acc) 40%,#000));box-shadow:0 0 30px var(--acc),0 0 70px color-mix(in srgb,var(--acc) 50%,transparent)}
+.listening #orb{animation:pulse .9s ease-in-out infinite}
+.speaking #orb{animation:pulse .5s ease-in-out infinite;filter:hue-rotate(40deg)}
+.thinking .r2{animation-duration:2s}
+#log{flex:1;width:100%;max-width:560px;overflow-y:auto;padding:8px 16px;display:flex;flex-direction:column;gap:8px;min-height:0}
+.m{padding:9px 13px;border-radius:14px;font-size:15px;line-height:1.45;max-width:88%;background:var(--card);border:1px solid var(--bd);white-space:pre-wrap}
+.u{align-self:flex-end;color:var(--mut)}
+.j{align-self:flex-start}
+.bar{width:100%;max-width:560px;display:flex;gap:8px;padding:8px 16px 14px}
+.bar input{flex:1;min-width:0;padding:11px 14px;border-radius:12px;border:1px solid var(--bd);background:var(--card);color:var(--fg);font-size:16px}
+.bar button{padding:0 14px;border-radius:12px;border:1px solid var(--bd);background:var(--card);color:var(--fg);font-size:14px;cursor:pointer}
+</style>
+</head>
+<body>
+<header>J.A.R.V.I.S.</header>
+<div id="status">Orb dabao aur bolo</div>
+<div class="stage" id="stage"><div class="ring"></div><div class="ring r2"></div><div class="ring r3"></div><button id="orb" aria-label="Bolo"></button></div>
+<div id="log"></div>
+<div class="bar"><input id="txt" placeholder="Ya yahan type karo…" autocomplete="off"><button id="send">Bhejo</button><button id="lang">हिं</button></div>
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)};
+var stage=$('stage'),statusEl=$('status'),log=$('log'),orb=$('orb'),txt=$('txt');
+var hist=[],busy=false,sample=null,lang='hi-IN',rec=null,voices=[];
+var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+function setState(s,t){stage.className='stage '+s;if(t)statusEl.textContent=t}
+function add(role,text){var d=document.createElement('div');d.className='m '+(role==='user'?'u':'j');d.textContent=text;log.appendChild(d);log.scrollTop=log.scrollHeight;return d}
+function loadVoices(){try{voices=speechSynthesis.getVoices()}catch(e){}}
+loadVoices();try{speechSynthesis.onvoiceschanged=loadVoices}catch(e){}
+function speak(t){
+  try{
+    speechSynthesis.cancel();
+    var u=new SpeechSynthesisUtterance(t.replace(/[*_#`]/g,''));
+    u.lang=lang;
+    var v=voices.filter(function(x){return x.lang&&x.lang.toLowerCase().indexOf(lang.slice(0,2).toLowerCase())===0})[0];
+    if(v)u.voice=v;
+    u.rate=1.02;
+    u.onstart=function(){setState('speaking','Jarvis bol raha hai…')};
+    u.onend=u.onerror=function(){setState('','Orb dabao aur bolo')};
+    speechSynthesis.speak(u);
+  }catch(e){setState('','Orb dabao aur bolo')}
+}
+function local(q){
+  var s=q.toLowerCase(),n=new Date();
+  if(/(time|samay|waqt|kitne baje|टाइम|समय|कितने बजे)/.test(s))return 'Abhi '+n.toLocaleTimeString('hi-IN',{hour:'numeric',minute:'2-digit'})+' ho raha hai.';
+  if(/(date|tarikh|aaj kya din|तारीख|आज कौन सा दिन)/.test(s))return 'Aaj '+n.toLocaleDateString('hi-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+' hai.';
+  return null;
+}
+async function ask(q){
+  if(busy||!q.trim())return;
+  busy=true;add('user',q);txt.value='';
+  var l=local(q);
+  if(l){add('j',l);speak(l);busy=false;return}
+  setState('thinking','Soch raha hoon…');
+  try{
+    if(!sample){sample=await claude.use('sample')}
+    if(!sample){throw {code:'none'}}
+    hist.push({role:'user',content:q});
+    var sys='You are J.A.R.V.I.S., a witty, polite, highly capable voice assistant like in Iron Man. Address the user as "sir" occasionally. Reply in the same language the user speaks (Hindi/Hinglish/English). If they write Hinglish, answer in Hinglish using Roman script. Keep replies short (1-3 sentences) because they are spoken aloud. No markdown, no lists, no emojis.\n\nConversation so far:\n';
+    var convo=hist.slice(-10).map(function(m){return (m.role==='user'?'User: ':'Jarvis: ')+m.content}).join('\n');
+    var el=add('j','…');
+    var r=await sample(sys+convo+'\nJarvis:',{cache:false,onText:function(o){el.textContent=o.text}});
+    var ans=(r.text||'').trim();
+    el.textContent=ans;hist.push({role:'assistant',content:ans});
+    speak(ans);
+  }catch(e){
+    var msg=(e&&e.code==='rate_limited')?'Thoda ruko, bahut requests ho gayi.':(e&&(e.code==='not_granted'||e.code==='none'))?'AI access nahi mila. Please permission allow karo.':'Kuch gadbad ho gayi, dobara try karo.';
+    add('j',msg);setState('','Orb dabao aur bolo');
+  }
+  busy=false;
+}
+function listen(){
+  if(!SR){setState('','Is browser mein voice input nahi hai. Type karo.');return}
+  try{speechSynthesis.cancel()}catch(e){}
+  if(rec){try{rec.stop()}catch(e){}}
+  rec=new SR();rec.lang=lang;rec.interimResults=true;rec.continuous=false;
+  var final='';
+  rec.onstart=function(){setState('listening','Sun raha hoon…')};
+  rec.onresult=function(ev){var t='';for(var i=0;i<ev.results.length;i++)t+=ev.results[i][0].transcript;final=t;statusEl.textContent=t};
+  rec.onerror=function(ev){setState('',ev.error==='not-allowed'?'Mic permission allow karo':'Dobara try karo')};
+  rec.onend=function(){if(final){ask(final)}else if(stage.className.indexOf('listening')>-1){setState('','Kuch sunai nahi diya')}};
+  try{rec.start()}catch(e){}
+}
+orb.onclick=listen;
+$('send').onclick=function(){ask(txt.value)};
+txt.onkeydown=function(e){if(e.key==='Enter')ask(txt.value)};
+$('lang').onclick=function(){lang=lang==='hi-IN'?'en-IN':'hi-IN';$('lang').textContent=lang==='hi-IN'?'हिं':'EN';statusEl.textContent=lang==='hi-IN'?'Hindi/Hinglish mode':'English mode'};
+add('j','Namaste sir, main Jarvis hoon. Orb dabaiye aur boliye.');
+})();
+</script>
+</body>
+</html>
